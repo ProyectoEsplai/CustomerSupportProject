@@ -8,11 +8,10 @@ Python con **recepción + escalado en niveles**.
   cordial, agradecimientos y despedidas. Un clasificador decide si el mensaje es
   una consulta sobre Python; solo entonces la consulta baja al Nivel 1. Así el
   RAG no se dispara con un simple "hola".
-- **Nivel 1** — atiende preguntas frecuentes con RAG sobre `data/faq_python.md`
-  (50 FAQ de Python básico/intermedio) indexado en ChromaDB. Si la pregunta
+- **Nivel 1** — atiende preguntas frecuentes con RAG sobre `data/faq_router_wifi6.md`
+  (50 FAQ del Router Smart Wifi 6) indexado en ChromaDB. Si la pregunta
   excede la FAQ, **el propio agente decide escalar** (emite el marcador `ESCALAR`).
-- **Nivel 2** — experto en Python avanzado (programación funcional, decorators,
-  composición de funciones). Atiende lo que el nivel 1 no resuelve, o cuando el
+- **Nivel 2** — experto en el Router Smart Wifi 6 avanzado (errores de instalación, soporte en conexiones, etc). Atiende lo que el nivel 1 no resuelve, o cuando el
   usuario marca una respuesta como insatisfactoria.
 - Si el usuario queda a gusto, puede **finalizar la sesión**.
 
@@ -64,7 +63,7 @@ crea una sesión nueva y devuelve su id.
 
 ```
 proyecto_base/
-├── data/faq_python.md     # 50 FAQ de Python (fuente del RAG nivel 1)
+├── data/faq_router_wifi6.md     # 50 FAQ de Router Smart Wifi 6 (fuente del RAG nivel 1)
 ├── static/index.html      # UI de chat
 ├── chroma_db/             # store Chroma (se crea al arrancar; gitignored)
 └── app/

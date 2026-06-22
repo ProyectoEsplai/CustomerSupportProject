@@ -18,11 +18,11 @@ EMBEDDING_MODEL = "nomic-embed-text"
 TEMPERATURE = 0.3
 
 # ChromaDB: store propio del proyecto (no se mezcla con el ./chroma_db de la raíz)
-COLLECTION_NAME = "faq_python"
+COLLECTION_NAME = "faq_router_wifi6"
 PERSIST_DIR = str(BASE_DIR / "chroma_db")
 
 # Documento de preguntas frecuentes que alimenta el RAG del nivel 1
-FAQ_PATH = BASE_DIR / "data" / "faq_python.md"
+FAQ_PATH = BASE_DIR / "data" / "faq_router_wifi6.md"
 
 # Cuántos fragmentos recupera el retriever del nivel 1
 TOP_K = 3

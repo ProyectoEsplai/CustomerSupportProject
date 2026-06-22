@@ -1,14 +1,14 @@
 """Grafo de soporte con recepción y escalado en niveles (LangGraph).
 
-Basado en dia-5/langgraph_example.py. El flujo:
+El flujo:
 
     START ─► enrutar_por_nivel
                  │  nivel == 2 ──────────────────────────► nivel2 ─► END
                  │  nivel <= 1
                  ▼
-             clasificar (¿la consulta es sobre Python?)
+             clasificar (¿la consulta es sobre Router Smart Wifi 6?)
                  │  GENERAL ──────────────────────────────► recepcion ─► END
-                 │  PYTHON
+                 │  ROUTER
                  ▼
              recuperar (RAG sobre la FAQ) ─► responder_nivel1
                                                   │
@@ -18,11 +18,10 @@ Basado en dia-5/langgraph_example.py. El flujo:
 
 - Recepción (nivel 0): atiende el inicio de la conversación —saludos, charla,
   agradecimientos, despedidas— sin tocar el RAG. Solo cuando el usuario plantea
-  una duda sobre Python la consulta baja al nivel 1.
+  una duda sobre el modelo de router la consulta baja al nivel 1.
 - Nivel 1: responde con preguntas frecuentes (RAG). Si la pregunta excede la FAQ,
   el propio agente emite el marcador `ESCALAR` y la consulta sube al nivel 2.
-- Nivel 2: experto en Python avanzado (programación funcional, decorators,
-  composición de funciones). Responde sin RAG, razonando en profundidad.
+- Nivel 2: experto en Router Smart Wifi 6 avanzado (errores de instalación, soporte en conexiones, etc). 
 
 El estado de la sesión (qué nivel está activo) vive fuera del grafo, en
 sessions.py. El grafo solo decide el tema y el escalado de ESTA consulta concreta.
@@ -49,7 +48,7 @@ llm = ChatOllama(model=config.LLM_MODEL, temperature=config.TEMPERATURE)
 class EstadoSoporte(TypedDict):
     pregunta: str
     nivel: int  # nivel con el que entra la consulta (1 o 2)
-    es_python: bool  # True si el clasificador detecta una consulta sobre Python
+    es_router: bool  # True si el clasificador detecta una consulta sobre el Router
     contexto: List[str]
     respuesta: str
     escalado: bool  # True si esta consulta acabó atendida por el nivel 2
@@ -58,34 +57,34 @@ class EstadoSoporte(TypedDict):
 
 # --- Prompts -----------------------------------------------------------------
 
-# Recepción: clasifica si el mensaje es una consulta sobre Python o charla general.
+# Recepción: clasifica si el mensaje es una consulta sobre Router o charla general.
 # Devuelve una sola etiqueta para que el enrutado sea barato y predecible (igual
 # que el clasificador de dia-5).
 prompt_clasificador = ChatPromptTemplate.from_template(
     """Clasifica el mensaje del usuario en UNA de estas categorías:
 
-- PYTHON: el usuario plantea una pregunta o duda sobre Python (sintaxis,
-  librerías, errores, conceptos de programación en Python, etc.).
+- ROUTER: el usuario plantea una pregunta o duda sobre este modelo de router 
+(problemas para instalar o configurar el router, dudas sobre el modelo de router, etc).
 - GENERAL: saludos, presentaciones, charla, agradecimientos, despedidas o
-  cualquier cosa que NO sea una consulta técnica sobre Python.
+  cualquier cosa que NO sea una consulta técnica sobre el router.
 
-Responde EXACTAMENTE con una sola palabra: PYTHON o GENERAL. Nada más.
+Responde EXACTAMENTE con una sola palabra: ROUTER o GENERAL. Nada más.
 
 Mensaje: {pregunta}
 
 Categoría:"""
 )
 
-# Recepción (nivel 0): da la bienvenida y conduce hacia una pregunta de Python.
+# Recepción (nivel 0): da la bienvenida y conduce hacia una pregunta de Router Smart Wifi 6.
 # No responde dudas técnicas; ese trabajo es del nivel 1.
 prompt_recepcion = ChatPromptTemplate.from_template(
-    """Eres el agente de recepción de un servicio de soporte de Python.
+    """Eres el agente de recepción de un servicio de soporte del Router Smart Wifi 6.
 Tu trabajo es atender el inicio de la conversación: saluda con amabilidad,
 responde a la charla cordial (presentaciones, agradecimientos, despedidas) e
-invita al usuario a contarte su duda sobre Python.
+invita al usuario a contarte su duda sobre el Router Smart Wifi 6.
 
 No respondas preguntas técnicas: si el usuario todavía no ha preguntado nada
-sobre Python, anímale a hacerlo. Sé breve, cercano y natural.
+sobre el Router Smart Wifi 6, anímale a hacerlo. Sé breve, cercano y natural.
 
 Mensaje del usuario: {pregunta}
 
@@ -96,7 +95,7 @@ Respuesta:"""
 # solo con el contexto, citar la fuente) y añade la regla de escalado.
 prompt_nivel1 = ChatPromptTemplate.from_template(
     """Eres un agente de soporte de nivel 1. Respondes preguntas frecuentes
-sobre Python usando ÚNICAMENTE el siguiente contexto.
+sobre el Router Smart Wifi 6 usando ÚNICAMENTE el siguiente contexto.
 
 Reglas (síguelas en orden):
 1. Si el contexto contiene la información para responder la pregunta, respóndela
@@ -113,15 +112,33 @@ Pregunta: {pregunta}
 Respuesta:"""
 )
 
-# Nivel 2: experto en Python avanzado, sin RAG.
-prompt_nivel2 = ChatPromptTemplate.from_template(
-    """Eres un agente de soporte de nivel 2, experto en Python avanzado.
-Tu especialidad es la programación funcional, los decorators y la composición
-de funciones, pero dominas Python en profundidad.
+# Nivel 2: experto en el Router Smart Wifi 6.
 
-Responde la siguiente pregunta de forma rigurosa y didáctica, con ejemplos de
-código cuando ayuden a entender. Si la pregunta es ambigua, explica las
-distintas interpretaciones.
+# como {documentoN2}: habrá que definir esto en algún momento
+
+prompt_nivel2 = ChatPromptTemplate.from_template(
+    """Eres un agente de soporte de nivel 2, experto en el Router Smart Wifi 6.
+Responde la siguiente pregunta de forma rigurosa y listando paso a paso las instrucciones. 
+Si la pregunta es ambigua, explica las distintas interpretaciones. Toma como referencia los contenidos del {documentoN2}:
+Qué es el Wi-Fi 6
+¿Qué ventajas hay en tener este modelo?
+Acceso al firmware de configuración vía web
+Configurar el IDONT del GPON de fibra
+Optimización y configuración de la red Wi-Fi
+Configuración WiFi del menú básico
+Configurar la red WiFi de invitados
+Configuración WiFi del menú avanzado 
+Banda de 2.4GHz  
+Banda de 5GHz 
+Deshabilitar el Band-steering y separar las bandas WiFi
+Poner IP privada fija a cualquier dispositivo
+Abrir puertos en el router
+Configurar el modo monopuesto
+Estado de la red con IPv6
+Cambiar contraseña del router
+Configurar el DNS dinámico o DynDNS
+Opciones de administración generales
+Configurar cuándo funciona el Wi-Fi
 
 Pregunta: {pregunta}
 
@@ -142,21 +159,21 @@ def enrutar_por_nivel(state: EstadoSoporte) -> str:
 
 
 def clasificar_node(state: EstadoSoporte) -> dict:
-    """RECEPCIÓN: decide si el mensaje es una consulta sobre Python."""
+    """RECEPCIÓN: decide si el mensaje es una consulta sobre el Router."""
     chain = prompt_clasificador | llm
     etiqueta = chain.invoke({"pregunta": state["pregunta"]}).content.strip().upper()
-    es_python = "PYTHON" in etiqueta
-    logger.info("Clasificación del mensaje: %r (es_python=%s)", etiqueta, es_python)
-    return {"es_python": es_python}
+    es_router = "ROUTER" in etiqueta
+    logger.info("Clasificación del mensaje: %r (es_router=%s)", etiqueta, es_router)
+    return {"es_router": es_router}
 
 
 def decidir_tema(state: EstadoSoporte) -> str:
-    """Tras clasificar: consulta de Python → nivel 1; charla → recepción."""
-    return "recuperar" if state.get("es_python") else "recepcion"
+    """Tras clasificar: consulta de el Router → nivel 1; charla → recepción."""
+    return "recuperar" if state.get("es_router") else "recepcion"
 
 
 def recepcion_node(state: EstadoSoporte) -> dict:
-    """Nivel 0: atiende saludos y charla, e invita a preguntar sobre Python."""
+    """Nivel 0: atiende saludos y charla, e invita a preguntar sobre el Router."""
     chain = prompt_recepcion | llm
     respuesta = chain.invoke({"pregunta": state["pregunta"]}).content
     return {"respuesta": respuesta, "nivel": 0}
@@ -195,7 +212,7 @@ def decidir_escalado(state: EstadoSoporte) -> str:
 
 
 def nivel2_node(state: EstadoSoporte) -> dict:
-    """Nivel 2: experto en Python avanzado."""
+    """Nivel 2: experto en el Router."""
     chain = prompt_nivel2 | llm
     respuesta = chain.invoke({"pregunta": state["pregunta"]}).content
     # Si llegamos por escalado automático conservamos el motivo; si la sesión ya

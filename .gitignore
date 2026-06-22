@@ -1,0 +1,41 @@
+# --- Entornos Virtuales y Dependencias ---
+.env
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Variables de Entorno y Claves ---
+# ¡IMPORTANTE! Archivos con claves API o contraseñas
+.env
+.env.local
+.env.*.local
+*.secret
+*.key
+
+# --- Compilados de Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Logs y Bases de Datos Locales ---
+*.log
+*.sqlite
+*.db
+
+# --- Archivos de configuración de Agentes/Python ---
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.mypy_cache/
+.tox/
+
+# --- IDEs y Editores ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

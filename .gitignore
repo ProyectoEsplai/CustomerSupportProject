@@ -5,6 +5,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.venv/
 
 # --- Variables de Entorno y Claves ---
 # ¡IMPORTANTE! Archivos con claves API o contraseñas

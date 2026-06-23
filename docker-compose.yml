@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # Contenedor 1: Servidor oficial de Ollama
+  ollama:
+    image: ollama/ollama:latest
+    container_name: support_ollama
+    ports:
+      # Exponemos por si quieres monitorizarlo externamente 
+      - "11434:11434"
+    volumes:
+      # Volumen local para no tener que descargar el modelo desde cero al reiniciar el contenedor
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  # Contenedor 2: Instala el modelo 'gemma3:4b' antes de arrancar Streamlit
+  ollama-init:
+    image: ollama/ollama:latest
+    container_name: support_ollama_init
+    depends_on:
+      - ollama
+    environment:
+      # Instruimos al cliente de Ollama interno a apuntar al contenedor servidor
+      - OLLAMA_HOST=ollama:11434
+    entrypoint: ["sh", "-c"]
+    command: 
+      - |
+        echo "Esperando a que Ollama esté activo..."
+        while ! ollama list > /dev/null 2>&1; do
+          sleep 2
+        done
+        echo "Ollama respondiendo. Descargando modelo gemma3:4b (puede tomar varios minutos)..."
+        ollama pull gemma3:4b
+        echo "El modelo gemma3:4b está listo."
+
+  # Contenedor 3: Nuestra aplicación Streamlit
+  app:
+    build: .
+    container_name: support_app
+    ports:
+      - "8501:8501"
+    environment:
+      # Configuramos Streamlit para apuntar al nombre de red del contenedor Docker, no a localhost
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - LLM_MODEL=gemma3:4b
+    depends_on:
+      # Obliga a Streamlit a esperar hasta que ollama-init haya completado su ciclo (el modelo esté descargado)
+      ollama-init:
+        condition: service_completed_successfully
+    volumes:
+      # Montamos el espacio de trabajo local para poder ver cambios en caliente mientras desarrollas
+      - .:/workspace
+    restart: unless-stopped
+
+# Declaración de volumen persistente para los modelos LLM
+volumes:
+  ollama_data:

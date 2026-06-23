@@ -1,27 +1,12 @@
-"""Modelos Pydantic para la API de chat."""
+"""Tipos compartidos del proyecto."""
 
-from typing import Literal, Optional
+from __future__ import annotations
 
-from pydantic import BaseModel
-
-
-class ChatRequest(BaseModel):
-    mensaje: str
-    session_id: Optional[str] = None
-    # Feedback sobre la respuesta ANTERIOR: si es "insatisfecho" la sesión
-    # escala a nivel 2 antes de responder este mensaje.
-    feedback: Optional[Literal["satisfecho", "insatisfecho"]] = None
+from dataclasses import dataclass
 
 
-class ChatResponse(BaseModel):
-    session_id: str
-    nivel: int
-    respuesta: str
-    escalado: bool
-    motivo: str
-
-
-class FinalizarResponse(BaseModel):
-    session_id: str
-    mensaje: str
-    turnos: int
+@dataclass
+class TurnoChat:
+    rol: str
+    contenido: str
+    nivel: str = ""

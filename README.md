@@ -1,81 +1,101 @@
-# proyecto_base — Chatbot de soporte Python con escalado
+# Soporte Router Smart WiFi 6 con agentes
 
-Aplicación FastAPI que integra las piezas del curriculum (RAG con Chroma,
-enrutado con LangGraph, agentes con Ollama) en un chatbot de soporte sobre
-Python con **recepción + escalado en niveles**.
+Aplicación Streamlit para atención al cliente sobre el Router Smart WiFi 6 de
+Movistar. El flujo sigue el esquema del curso: recuperación RAG, agentes por
+nivel, clasificadores de escalado y trazabilidad visual del recorrido.
 
-- **Recepción (Nivel 0)** — atiende el inicio de la conversación: saludos, charla
-  cordial, agradecimientos y despedidas. Un clasificador decide si el mensaje es
-  una consulta sobre Python; solo entonces la consulta baja al Nivel 1. Así el
-  RAG no se dispara con un simple "hola".
-- **Nivel 1** — atiende preguntas frecuentes con RAG sobre `data/faq_router_wifi6.md`
-  (50 FAQ del Router Smart Wifi 6) indexado en ChromaDB. Si la pregunta
-  excede la FAQ, **el propio agente decide escalar** (emite el marcador `ESCALAR`).
-- **Nivel 2** — experto en el Router Smart Wifi 6 avanzado (errores de instalación, soporte en conexiones, etc). Atiende lo que el nivel 1 no resuelve, o cuando el
-  usuario marca una respuesta como insatisfactoria.
-- Si el usuario queda a gusto, puede **finalizar la sesión**.
+## Flujo implementado
+
+1. **Entrada LLM** recibe la pregunta y la entrega a N1.
+2. **RAG N1** recupera fragmentos del PDF de preguntas frecuentes:
+   `Las 50 preguntas más frecuentes sobre el router Smart WiFi 6 de Movistar.pdf`.
+3. **Soporte N1** responde solo si la FAQ contiene información suficiente.
+4. **Clasificador N1** termina o escala a N2.
+5. **RAG N2** recupera fragmentos del manual:
+   `manual-de-configuracion-del-router-movistar_compress.pdf`.
+6. **Soporte N2** responde con pasos técnicos usando solo el manual.
+7. **Clasificador N2** termina o escala a **Asistente Humano**.
+
+Contacto humano inventado para la demo:
+
+- Teléfono: `900 123 456`
+- Correo: `soporte.smartwifi6@example.com`
 
 ## Requisitos
 
-- [Ollama](https://ollama.com) corriendo en `http://localhost:11434`.
-- Modelos descargados (`ollama list` para comprobar):
-  - `qwen3:8b` (nivel 1 y nivel 2)
-  - `nomic-embed-text` (embeddings)
-- Dependencias del repo ya instaladas (`uv sync`). No añade dependencias nuevas.
-
-## Cómo ejecutar
-
-Desde la raíz del repo (`pildora-ai/`):
+- Python 3.10 o superior.
+- Ollama abierto en `http://localhost:11434`.
+- Modelo descargado:
 
 ```bash
-uv run uvicorn proyecto_base.app.main:app --reload
+ollama pull gemma3:4b
 ```
 
-Al arrancar, indexa la FAQ en `proyecto_base/chroma_db/` (idempotente: usa IDs
-deterministas, reiniciar no duplica vectores). Luego abre:
+- Dependencias Python:
 
-- **UI de chat**: http://localhost:8000/
-- **Swagger / API**: http://localhost:8000/docs
+```bash
+pip install -r requirements.txt
+```
 
-## Endpoints
+## Ejecución
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET`  | `/` | Interfaz de chat web |
-| `POST` | `/chat` | Envía un mensaje. Body: `{"mensaje": "...", "session_id": "...", "feedback": "insatisfecho"}` |
-| `POST` | `/session/{id}/finalizar` | Cierra la sesión (usuario a gusto) |
-| `GET`  | `/session/{id}` | Estado e historial (depuración) |
-| `GET`  | `/health` | Comprobación de vida |
+Desde esta carpeta:
 
-`session_id` y `feedback` son opcionales. La primera llamada sin `session_id`
-crea una sesión nueva y devuelve su id.
+```bash
+python -m streamlit run streamlit_app.py --server.headless true --browser.gatherUsageStats false
+```
 
-## Cómo se dispara el escalado
+En Windows también puedes ejecutar:
 
-1. **Automático**: el nivel 1 responde con la FAQ; si la pregunta requiere
-   conocimiento avanzado o no está cubierta, emite `ESCALAR` y la consulta pasa
-   al nivel 2 (`motivo: "auto"`).
-2. **Por feedback**: si el usuario envía `feedback: "insatisfecho"`, la sesión
-   sube a nivel 2 y todas las consultas siguientes las atiende el experto
-   (`motivo: "feedback"`).
+```bash
+run_streamlit.bat
+```
+
+La app carga los dos PDFs desde la carpeta superior del curso. Si cambias los
+nombres de los PDFs, actualiza las rutas en `app/config.py`.
 
 ## Estructura
 
-```
-proyecto_base/
-├── data/faq_router_wifi6.md     # 50 FAQ de Router Smart Wifi 6 (fuente del RAG nivel 1)
-├── static/index.html      # UI de chat
-├── chroma_db/             # store Chroma (se crea al arrancar; gitignored)
-└── app/
-    ├── config.py          # modelos, rutas absolutas, colección
-    ├── indexing.py        # FAQ → chunks → Chroma + retriever
-    ├── graph.py           # StateGraph: recepción → nivel1/nivel2 y escalado
-    ├── sessions.py        # sesiones en memoria
-    ├── schemas.py         # modelos Pydantic
-    └── main.py            # app FastAPI (lifespan + endpoints)
+```text
+CustomerSupportProject/
+├── app/
+│   ├── config.py          # rutas, modelo, umbrales y contacto humano
+│   ├── documents.py       # extracción de PDFs y recuperador léxico BM25
+│   ├── graph.py           # nodos, estado, clasificación y escalado
+│   ├── indexing.py        # compatibilidad con la idea de indexación
+│   ├── main.py            # prueba rápida por consola
+│   ├── ollama_client.py   # cliente HTTP para Ollama sin dependencias extra
+│   └── schemas.py         # tipos compartidos
+├── requirements.txt
+└── streamlit_app.py       # interfaz Streamlit
 ```
 
-## Límites (proyecto didáctico)
+## Notas didácticas
 
-- Sesiones en memoria: se pierden al reiniciar el servidor.
-- Sin autenticación (uso local).
+- El RAG es ligero: usa búsqueda léxica local para no exigir otro modelo de
+  embeddings en equipos modestos.
+- Los prompts obligan a N1 y N2 a escalar si su contexto no responde.
+- La pantalla muestra cada nodo ejecutado y las fuentes recuperadas en cada paso.
+
+---
+---
+
+## Dockerización:
+
+- Un contenedor creado a partir de un Dockerfile con python y las dependencias que necesita
+
+- Otros dos contenedores creados desde el Docker compose:
+   1. Ollama
+   2. Ollama-init, cuyopropósito es esperar a que Ollama se levante y descargar automáticamente el modelo gemma3:4b antes de que Streamlit comience
+
+### Comando para lanzarlo:
+
+```sh
+docker-compose up --build
+```
+
+### Flujo:
+
+1. Docker iniciará el servidor de Ollama vacío.
+2. Inmediatamente el script `ollama-init` interceptará el contenedor, comenzará a descargar el modelo, y retendrá el arranque de la app.
+3. Al finalizar, la app Streamlit se construirá en su contenedor, iniciará, se conectará a Ollama de forma limpia y será alcanzable accediendo en el host a `http://localhost:8501`.

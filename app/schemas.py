@@ -1,27 +1,54 @@
-"""Modelos Pydantic para la API de chat."""
+"""Modelos Pydantic compartidos por FastAPI y Streamlit."""
 
-from typing import Literal, Optional
+from __future__ import annotations
 
-from pydantic import BaseModel
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+
+EstadoPaso = Literal["pendiente", "completado", "escalado", "omitido", "final"]
+TipoPaso = Literal["entrada", "rag", "agente", "clasificador", "humano", "fin"]
+NivelSoporte = Literal["Entrada", "Recepción", "N1", "N2", "Humano"]
+
+
+class PasoRecorrido(BaseModel):
+    id: str
+    nombre: str
+    tipo: TipoPaso
+    estado: EstadoPaso
+    detalle: str
+    fuentes: list[str] = Field(default_factory=list)
 
 
 class ChatRequest(BaseModel):
-    mensaje: str
-    session_id: Optional[str] = None
-    # Feedback sobre la respuesta ANTERIOR: si es "insatisfecho" la sesión
-    # escala a nivel 2 antes de responder este mensaje.
-    feedback: Optional[Literal["satisfecho", "insatisfecho"]] = None
+    mensaje: str = Field(min_length=1)
+    session_id: str | None = None
+    feedback: Literal["satisfecho", "insatisfecho"] | None = None
 
 
 class ChatResponse(BaseModel):
     session_id: str
-    nivel: int
+    nivel: NivelSoporte
     respuesta: str
+    destino: Literal["fin", "n2", "humano"]
     escalado: bool
     motivo: str
+    pasos: list[PasoRecorrido] = Field(default_factory=list)
+    fuentes: list[str] = Field(default_factory=list)
+    confianza_n1: float = 0.0
+    confianza_n2: float = 0.0
 
 
 class FinalizarResponse(BaseModel):
     session_id: str
     mensaje: str
     turnos: int
+
+
+class HealthResponse(BaseModel):
+    status: str
+    modelo_llm: str
+    modelo_embeddings: str
+    fragmentos_faq_n1: int
+    fragmentos_manual_n2: int

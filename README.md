@@ -1,81 +1,99 @@
-# proyecto_base — Chatbot de soporte Python con escalado
+# Entrega - Soporte Router Smart WiFi 6
 
-Aplicación FastAPI que integra las piezas del curriculum (RAG con Chroma,
-enrutado con LangGraph, agentes con Ollama) en un chatbot de soporte sobre
-Python con **recepción + escalado en niveles**.
+Proyecto de atención al cliente desarrollado con:
 
-- **Recepción (Nivel 0)** — atiende el inicio de la conversación: saludos, charla
-  cordial, agradecimientos y despedidas. Un clasificador decide si el mensaje es
-  una consulta sobre Python; solo entonces la consulta baja al Nivel 1. Así el
-  RAG no se dispara con un simple "hola".
-- **Nivel 1** — atiende preguntas frecuentes con RAG sobre `data/faq_router_wifi6.md`
-  (50 FAQ del Router Smart Wifi 6) indexado en ChromaDB. Si la pregunta
-  excede la FAQ, **el propio agente decide escalar** (emite el marcador `ESCALAR`).
-- **Nivel 2** — experto en el Router Smart Wifi 6 avanzado (errores de instalación, soporte en conexiones, etc). Atiende lo que el nivel 1 no resuelve, o cuando el
-  usuario marca una respuesta como insatisfactoria.
-- Si el usuario queda a gusto, puede **finalizar la sesión**.
+- Streamlit para la interfaz.
+- FastAPI para la API.
+- LangGraph para el flujo de agentes.
+- LangChain y ChromaDB para el RAG.
+- Ollama con `gemma3:4b` y `nomic-embed-text`.
 
-## Requisitos
+La entrega incluye los dos PDFs utilizados por N1 y N2 dentro de `data/`. No
+necesita archivos situados fuera de esta carpeta.
 
-- [Ollama](https://ollama.com) corriendo en `http://localhost:11434`.
-- Modelos descargados (`ollama list` para comprobar):
-  - `qwen3:8b` (nivel 1 y nivel 2)
-  - `nomic-embed-text` (embeddings)
-- Dependencias del repo ya instaladas (`uv sync`). No añade dependencias nuevas.
+## Integración en el Compose general
 
-## Cómo ejecutar
+El archivo recomendado para la entrega conjunta es:
 
-Desde la raíz del repo (`pildora-ai/`):
-
-```bash
-uv run uvicorn proyecto_base.app.main:app --reload
+```text
+docker/compose.integracion.yaml
 ```
 
-Al arrancar, indexa la FAQ en `proyecto_base/chroma_db/` (idempotente: usa IDs
-deterministas, reiniciar no duplica vectores). Luego abre:
+Utiliza nombres prefijados para evitar conflictos con las APIs, interfaces u
+Ollama de otros proyectos:
 
-- **UI de chat**: http://localhost:8000/
-- **Swagger / API**: http://localhost:8000/docs
+- `router-smartwifi6-ollama`
+- `router-smartwifi6-modelos`
+- `router-smartwifi6-api`
+- `router-smartwifi6-streamlit`
 
-## Endpoints
+Si el Compose principal está en la carpeta que contiene este proyecto:
 
-| Método | Ruta | Descripción |
-|--------|------|-------------|
-| `GET`  | `/` | Interfaz de chat web |
-| `POST` | `/chat` | Envía un mensaje. Body: `{"mensaje": "...", "session_id": "...", "feedback": "insatisfecho"}` |
-| `POST` | `/session/{id}/finalizar` | Cierra la sesión (usuario a gusto) |
-| `GET`  | `/session/{id}` | Estado e historial (depuración) |
-| `GET`  | `/health` | Comprobación de vida |
-
-`session_id` y `feedback` son opcionales. La primera llamada sin `session_id`
-crea una sesión nueva y devuelve su id.
-
-## Cómo se dispara el escalado
-
-1. **Automático**: el nivel 1 responde con la FAQ; si la pregunta requiere
-   conocimiento avanzado o no está cubierta, emite `ESCALAR` y la consulta pasa
-   al nivel 2 (`motivo: "auto"`).
-2. **Por feedback**: si el usuario envía `feedback: "insatisfecho"`, la sesión
-   sube a nivel 2 y todas las consultas siguientes las atiende el experto
-   (`motivo: "feedback"`).
-
-## Estructura
-
-```
-proyecto_base/
-├── data/faq_router_wifi6.md     # 50 FAQ de Router Smart Wifi 6 (fuente del RAG nivel 1)
-├── static/index.html      # UI de chat
-├── chroma_db/             # store Chroma (se crea al arrancar; gitignored)
-└── app/
-    ├── config.py          # modelos, rutas absolutas, colección
-    ├── indexing.py        # FAQ → chunks → Chroma + retriever
-    ├── graph.py           # StateGraph: recepción → nivel1/nivel2 y escalado
-    ├── sessions.py        # sesiones en memoria
-    ├── schemas.py         # modelos Pydantic
-    └── main.py            # app FastAPI (lifespan + endpoints)
+```yaml
+include:
+  - path: ./CustomerSupportProject_PROFESOR/docker/compose.integracion.yaml
 ```
 
-## Límites (proyecto didáctico)
+Después:
 
-- Sesiones en memoria: se pierden al reiniciar el servidor.
-- Sin autenticación (uso local).
+```powershell
+docker compose up --build
+```
+
+La interfaz queda disponible por defecto en:
+
+```text
+http://127.0.0.1:8501
+```
+
+Si esos puertos ya están ocupados, pueden configurarse en el `.env` del
+Compose principal:
+
+```dotenv
+ROUTER_API_PORT_HOST=8100
+ROUTER_STREAMLIT_PORT_HOST=8601
+```
+
+Consulta [`docker/INTEGRACION_COMPOSE.md`](docker/INTEGRACION_COMPOSE.md) para
+copiar los servicios dentro de un único YAML en lugar de utilizar `include`.
+
+## Ejecución independiente
+
+Para comprobar este proyecto por separado:
+
+```powershell
+cd docker
+docker compose up --detach --build --wait --wait-timeout 1800
+```
+
+También puede ejecutarse `docker/iniciar_docker.bat` en Windows.
+
+La primera ejecución descarga las imágenes, Gemma 3 4B y el modelo de
+embeddings. Los modelos y el índice ChromaDB se guardan en volúmenes
+persistentes.
+
+Para detenerlo:
+
+```powershell
+cd docker
+docker compose down
+```
+
+## Estructura de la entrega
+
+```text
+CustomerSupportProject_PROFESOR/
+|-- app/                         # API, grafo, RAG y sesiones
+|-- data/                        # PDF de FAQ y manual técnico
+|-- docker/
+|   |-- Dockerfile
+|   |-- compose.yaml             # ejecución independiente
+|   |-- compose.integracion.yaml # integración con otros proyectos
+|   `-- INTEGRACION_COMPOSE.md
+|-- scripts/check_project.py
+|-- requirements.txt
+`-- streamlit_app.py
+```
+
+No se incluyen `.venv`, logs, cachés, modelos descargados ni una base ChromaDB
+generada en otro equipo.
